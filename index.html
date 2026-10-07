@@ -54,12 +54,23 @@ async function deriveRaw(pw){
   var base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveBits']);
   return crypto.subtle.deriveBits({name:'PBKDF2',salt:b64(P.salt),iterations:P.iter,hash:'SHA-256'},base,256);
 }
+function render(html){
+  // Troca cabeça e corpo da página pelos do painel, sem herdar nada da tela de senha.
+  var d=new DOMParser().parseFromString(html,'text/html');
+  var root=document.documentElement;
+  root.replaceChild(document.importNode(d.head,true),document.head);
+  root.replaceChild(document.importNode(d.body,true),document.body);
+  [].slice.call(document.body.querySelectorAll('script')).forEach(function(old){
+    var s=document.createElement('script'); s.textContent=old.textContent; old.parentNode.replaceChild(s,old);
+  });
+  window.scrollTo(0,0);
+}
 async function openWith(raw){
   var key=await crypto.subtle.importKey('raw',raw,'AES-CBC',false,['decrypt']);
   var out=await crypto.subtle.decrypt({name:'AES-CBC',iv:b64(P.iv)},key,b64(P.ct));
   var txt=new TextDecoder().decode(out);
   if(txt.indexOf('PRIORI-OK:')!==0) throw new Error('bad');
-  document.open();document.write(txt.slice(10));document.close();
+  render(txt.slice(10));
 }
 (async function(){
   try{var saved=localStorage.getItem(KEY); if(saved){await openWith(b64(saved));return}}catch(e){try{localStorage.removeItem(KEY)}catch(_){}}
